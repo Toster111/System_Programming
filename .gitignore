@@ -1,0 +1,7 @@
+jupyter_env/
+__pycache__/
+*.pyc
+*.o
+a.out
+Popov
+Popov_c
