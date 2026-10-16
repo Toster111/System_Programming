@@ -5,6 +5,7 @@ public convert_ascii_int
 public convert_int_ascii
 public print_msg
 public ex_1
+public ex_2
 public _exit
 
 section '.data' writable
@@ -18,15 +19,13 @@ section '.bss' writable
 
 section '.text' executable
 _start:
-	mov rsi, msg_1
-	mov rdx, l_msg_1
-	call  print_msg
-
 	call input
 
 	call convert_ascii_int
 	
 	call ex_1
+
+	push rax
 
 	call convert_int_ascii ; вызов подпрограммы для преобразования из числа в ascii
 
@@ -35,9 +34,25 @@ _start:
 
         call print_msg
 
+	pop rax
+
+	mov [accumulat], rax
+
+	call ex_2
+
+	mov rsi, buffer_2
+	mov rdx, rbx
+
+	call print_msg
+
 	call _exit
 
 input: ;Метка для ввода
+	mov rsi, msg_1
+        mov rdx, l_msg_1
+
+	call print_msg
+	
 	xor rax, rax
 	mov rsi, buffer ; Буфер для записи с клавиатуры
 	mov rdx, 256
@@ -61,10 +76,10 @@ input: ;Метка для ввода
 convert_ascii_int: ; Перевод из ascii нотации в int. В rsi хранится адрес, rdx - длина.
 	; rax - аккумулятор числа
 	xor rax, rax
-	mov rcx, 45
-	cmp [rsi], rcx
-	je .negat
-	push 0
+	;mov rcx, 45
+	;cmp [rsi], rcx
+	;je .negat
+	;push 0
 
 	.iter:
 			cmp byte [rsi], 0
@@ -81,9 +96,9 @@ convert_ascii_int: ; Перевод из ascii нотации в int. В rsi х�
 			jmp .iter
 
 	.next:
-			pop rbx
-			cmp rbx, 1
-			je .next_neg
+			;pop rbx
+			;cmp rbx, 1
+			;je .next_neg
 			mov [accumulat], rax
 
 			ret
@@ -97,19 +112,26 @@ convert_ascii_int: ; Перевод из ascii нотации в int. В rsi х�
 			not rax
 			inc rax
 			mov [accumulat], rax
+			
 
 			ret
 
 convert_int_ascii:
 	mov rax, [accumulat]
+
+	mov rdx, 10
+	mov rsi, buffer_2
+	mov [rsi + 255], rdx 
+
 	mov rdx, rax
 	mov rsi, buffer_2
+	
 
 	shr rdx, 63 ; Сдвиг регистра, чтобы узнать значащий бит
 
 	push rdx
 
-	mov rbx, 255
+	mov rbx, 254
 	mov rcx, 10
 
 	cmp rdx, 1
@@ -192,9 +214,36 @@ ex_1:
 
 		jmp .iter_1
 	.next_1:
+		; rax = k
 		mov [accumulat], rbx
 
 		ret
+
+ex_2:
+	mov rax, [accumulat]
+	mov rcx, 10
+
+	mov rsi, buffer_2
+
+	xor rbx, rbx
+
+	.iter:
+		cmp rax, 0
+		je .next
+		xor rdx, rdx
+		div rcx
+		add rdx, '0'
+		mov [rsi + rbx], dl
+		
+		inc rbx
+
+		jmp .iter
+	.next:
+		mov rdx, 10
+		mov [rsi + rbx], rdx
+		
+		ret	
+	
 		
 print_msg: ; Вызов вывода в командную строку
 	mov rax, 1
