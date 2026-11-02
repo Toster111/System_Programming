@@ -11,7 +11,7 @@ segment readable writeable
 	intg dq 5277616985
 
 segment readable executable
-	buffer db 256 dup (?)
+	buffer db 25 dup (?)
 	buffer_2 db 64 dup (?)
 	n dq 0
 	m dq 0
@@ -39,7 +39,7 @@ first:
 		cmp rcx, msg_len
 		jne .iter
 	mov [buffer + msg_len], 0xA
-	mov rdx, msg_len + 1
+	mov rdx, 25
 	mov rax, 1
         mov rbx, 1
         mov rcx, buffer
