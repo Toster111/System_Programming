@@ -13,8 +13,8 @@ section '.data' writable
 	l_msg_1 = $ - msg_1
 
 section '.bss' writable
-	buffer rd 256 ; Для хранения ввода
-	buffer_2 rd 256 ; Для хранения вывода
+	buffer rd 1 ; Для хранения ввода
+	buffer_2 rd 1 ; Для хранения вывода
 	accumulat rq 1
 
 section '.text' executable
