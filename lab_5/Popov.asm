@@ -1,81 +1,169 @@
 format ELF64
+
 public _start
-
-public open
+public input
 public read_write
-public _exit
+public buffer
+public exit
 
-section '.data' executable
-	file_name_1 db "example.txt"
-        file_name_l_1 = $-file_name_1
+section '.bss' writable
+  buffer rb 1024
 
-	file_name_2 db "example_2.txt"
-        file_name_l_2 = $-file_name_2	
+section '.data' writable
+  file_size dq 0
+  newline   db 10
 
-section '.bss' writable 
+section '.text' executable
 
-	buffer_file_first rb 256
-
-section '.text' writable
 _start:
-	pop rcx
-	cmp rcx, 3
-	jne _exit
-	
-	call open
-	
-	call read_write 
-	
-	syscall
+  pop rcx
+  cmp rcx, 3
+  jl exit
 
-	jmp _exit
+  call input
+  call read_write
+  jmp exit
 
-open:
+input:
+   mov rdi, [rsp+16]
+   mov rax, 2
+   mov rsi, 0
+   syscall
+   cmp rax, 0
+   jl exit
+   mov r8, rax
 
-	mov rax, 2 ; тут харнится fd после syscall
-	mov rdi, file_name_1
-	xor rsi, rsi ; 0 - флаг только на чтение 
+   mov rax, 8
+   mov rdi, r8
+   mov rsi, 0
+   mov rdx, 2
+   syscall
+   mov [file_size], rax
 
-	cmp rax, 0 ;если вернулось отрицательное значение,
-   	jl _exit
-	
-	syscall
+   mov rdi, [rsp+24]
+   mov rax, 2
+   mov rsi, 0x241
+   mov rdx, 644
+   syscall
+   jl exit
+   mov r9, rax
 
-	mov r8, rax ; хранение fd первого файла
-	
-	mov rax, 2
-	mov rdi, file_name_2
-	mov rsi, 1 ; 1 - флаг только на запись
-	
-	cmp rax, 0 ;если вернулось отрицательное значение,
-        jl _exit
-
-	syscall
-
-	mov r10, rax ; хранение fd второго файла
-
-	ret
+   ret
 
 read_write:
-	xor rax, rax
-	mov rdi, r8
-	mov rsi, buffer_file_first
-	mov rdx, 256
+.loop:
+   cmp qword [file_size], 1024
+   jb .last_chunk
 
-	syscall
+   sub qword [file_size], 1024
 
-	mov rax, 1
-	mov rdi, r10
-	mov rsi, buffer_file_first
-	mov rdx, 256
+   mov rax, 8
+   mov rdi, r8
+   mov rsi, [file_size]
+   mov rdx, 0
+   syscall
 
-	syscall
+   mov rax, 0
+   mov rdi, r8
+   mov rsi, buffer
+   mov rdx, 1024
+   syscall
 
-	ret
-	
-section '.exit' executable
-_exit:
-	mov rax, 60
-	mov rdi, 0
+   test rax, rax
+   jle .cont
 
-	syscall
+   jmp .process
+
+.last_chunk:
+   mov rdx, [file_size]
+   test rdx, rdx
+   jz .cont
+
+   mov rax, 8
+   mov rdi, r8
+   mov rsi, 0
+   mov rdx, 0
+   syscall
+
+   mov rax, 0
+   mov rdi, r8
+   mov rsi, buffer
+   mov rdx, [file_size]
+   syscall
+
+   test rax, rax
+   jle .cont
+
+   mov qword [file_size], 0
+
+.process:
+   mov r12, rax
+   lea r13, [rax - 1]
+
+.loop_2:
+   test r13, r13
+   js .done
+
+   mov bl, byte [buffer + r13]
+   cmp bl, 10
+   je .carr
+
+   dec r13
+   jmp .loop_2
+
+.carr:
+   mov rdx, r12
+   sub rdx, r13
+   dec rdx
+   test rdx, rdx
+   jz .skip_carr
+
+   lea rsi, [buffer + r13 + 1]
+   mov rax, 1
+   mov rdi, r9
+   syscall
+
+   mov rax, 1
+   mov rdi, r9
+   lea rsi, [newline]
+   mov rdx, 1
+   syscall
+
+.skip_carr:
+   mov r12, r13
+   dec r13
+   jmp .loop_2
+
+.done:
+   test r12, r12
+   jz .loop
+
+   mov rdx, r12
+   mov rsi, buffer
+   mov rax, 1
+   mov rdi, r9
+   syscall
+
+   mov rax, 1
+   mov rdi, r9
+   lea rsi, [newline]
+   mov rdx, 1
+   syscall
+
+   jmp .loop
+
+.cont:
+   mov rax, 3
+   mov rdi, r8
+   syscall
+
+   mov rax, 3
+   mov rdi, r9
+   syscall
+
+   ret
+
+exit:
+   mov rax, 60
+   xor rdi, rdi
+   syscall
